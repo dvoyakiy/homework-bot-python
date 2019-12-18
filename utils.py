@@ -1,9 +1,8 @@
-from aiogram.types import Message
 from db import chats_collection
 
 
-def is_private(m: Message):
-    return int(m.chat.id) > 0
+def is_private(chat_id):
+    return chat_id > 0  # check docs about chat_id == 0
 
 
 def chat_exists(chat_id):
