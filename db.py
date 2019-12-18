@@ -8,3 +8,4 @@ db = client[config.DB_NAME]
 
 users_collection = db['users']
 chats_collection = db['chats']
+subjects_collection = db['subjects']

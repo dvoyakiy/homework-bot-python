@@ -1,8 +1,9 @@
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
+from aiogram.types.inline_keyboard import InlineKeyboardMarkup
 
 from config import TOKEN
-from db import chats_collection, users_collection
+from db import users_collection, chats_collection, subjects_collection
 import utils
 
 bot = Bot(TOKEN)
@@ -33,9 +34,25 @@ async def new_chat_command(m: Message):
 # @dp.message_handler(commands=['auth'])
 # async def get_id_command(m: Message):
 #     await m.reply('authenticated!' if utils.is_private(m.chat.id) else 'use private chat!')
+@dp.message_handler(commands=['subjects'])
+async def subjects_command(m: Message):
+    chat_id = m.chat.id
+    subjects = subjects_collection.find({'chat_id': chat_id})
+
+    inline_keyboard = utils.create_markup(subjects)
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+    await m.reply(text='Choose:', reply_markup=reply_markup)
 
 
-@dp.message_handler(commands=['add_hw'])
+
+@dp.message_handler(commands=['get_homework'])
+async def add_hw_command(m: Message):
+
+    await m.reply('Homework added!')
+
+
+@dp.message_handler(commands=['add_homework'])
 async def add_hw_command(m: Message):
 
     await m.reply('Homework added!')
