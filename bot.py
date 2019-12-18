@@ -18,7 +18,9 @@ async def new_chat_command(m: Message):
     if not utils.chat_exists(chat_id):
         chat_doc = {
             'chat_id': chat_id,
-            'user_id': user_id
+            'chat_title': m.chat.full_name,
+            'user_id': user_id,
+            'type': 'private' if utils.is_private(chat_id) else 'group'
         }
 
         chats_collection.insert_one(chat_doc)
