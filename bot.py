@@ -30,30 +30,36 @@ async def new_chat_command(m: Message):
         await m.reply('Chat has been already created!')
 
 
-# add auth functionality later
-# @dp.message_handler(commands=['auth'])
-# async def get_id_command(m: Message):
-#     await m.reply('authenticated!' if utils.is_private(m.chat.id) else 'use private chat!')
 @dp.message_handler(commands=['subjects'])
 async def subjects_command(m: Message):
     chat_id = m.chat.id
     subjects = subjects_collection.find({'chat_id': chat_id})
 
     inline_keyboard = utils.create_markup(subjects)
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
-    await m.reply(text='Choose:', reply_markup=reply_markup)
+    if inline_keyboard:
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+        text = 'Choose:'
+    else:
+        # TODO: Add callback button with login url if no subjects
+        reply_markup = None
+        text = 'No added subjects.'
 
+    await m.reply(text=text, reply_markup=reply_markup)
 
 
 @dp.message_handler(commands=['get_homework'])
 async def add_hw_command(m: Message):
 
-    await m.reply('Homework added!')
+    await subjects_command(m)
 
 
 @dp.message_handler(commands=['add_homework'])
 async def add_hw_command(m: Message):
 
-    await m.reply('Homework added!')
+    await subjects_command(m)
 
+
+@dp.message_handler(commands=['id'])
+async def get_chat_id(m: Message):
+    await m.reply(m.chat.id)
