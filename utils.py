@@ -1,5 +1,6 @@
 from db import chats_collection
 from aiogram.types.inline_keyboard import InlineKeyboardButton
+from math import ceil
 
 
 def is_private(chat_id):
@@ -14,11 +15,39 @@ def create_markup(collection):
     subjects = [s for s in collection]
     l = len(subjects)
 
-    if l < 6:
+    def _get_rows(elements_in_row):
+        rows = ceil(l / elements_in_row)
+        added = 0
+        res = []
+
+        for r in range(rows):
+            row_el = []
+
+            try:
+                for i in range(elements_in_row):
+                    row_el.append(
+                        InlineKeyboardButton(
+                            text=subjects[added + i]['title'],
+                            callback_data=str(subjects[added + i]['_id'])
+                        )
+                    )
+
+                added += elements_in_row
+            except IndexError:
+                continue
+            finally:
+                res.append(row_el)
+
+        return res
+
+    if l == 0:
+        return []
+
+    if 0 < l < 6:
         return [[InlineKeyboardButton(text=s['title'], callback_data=str(s['_id']))] for s in subjects]
 
-    if l >= 6 <= 8:
-        rows = round(l / 2)
-        # make this done tomorrow
+    if 6 <= l <= 8:
+        return _get_rows(2)
 
-
+    if 8 < l:
+        return _get_rows(3)
