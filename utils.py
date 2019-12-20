@@ -11,8 +11,7 @@ def chat_exists(chat_id):
     return bool(chats_collection.find_one({'chat_id': chat_id}))
 
 
-def create_markup(collection):
-    subjects = [s for s in collection]
+def create_markup(subjects):
     l = len(subjects)
 
     def _get_rows(elements_in_row):
@@ -28,7 +27,7 @@ def create_markup(collection):
                     row_el.append(
                         InlineKeyboardButton(
                             text=subjects[added + i]['title'],
-                            callback_data=str(subjects[added + i]['_id'])
+                            callback_data='subject_' + str(subjects[added + i]['_id'])
                         )
                     )
 
@@ -44,7 +43,10 @@ def create_markup(collection):
         return []
 
     if 0 < l < 6:
-        return [[InlineKeyboardButton(text=s['title'], callback_data=str(s['_id']))] for s in subjects]
+        return [[InlineKeyboardButton(
+            text=s['title'],
+            callback_data='subject_' + str(s['_id'])
+        )] for s in subjects]
 
     if 6 <= l <= 8:
         return _get_rows(2)

@@ -1,13 +1,16 @@
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message
-from aiogram.types.inline_keyboard import InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery
+from aiogram.types.inline_keyboard import InlineKeyboardMarkup, InlineKeyboardButton
+from bson.objectid import ObjectId
 
 from config import TOKEN
-from db import users_collection, chats_collection, subjects_collection
+from db import users_collection, chats_collection, subjects_collection, tasks_collection
 import utils
 
 bot = Bot(TOKEN)
 dp = Dispatcher(bot)
+
+waiting = {}
 
 
 @dp.message_handler(commands=['new_chat'])
@@ -33,7 +36,7 @@ async def new_chat_command(m: Message):
 @dp.message_handler(commands=['subjects'])
 async def subjects_command(m: Message):
     chat_id = m.chat.id
-    subjects = subjects_collection.find({'chat_id': chat_id})
+    subjects = list(subjects_collection.find({'chat_id': chat_id}))
 
     inline_keyboard = utils.create_markup(subjects)
 
@@ -63,3 +66,66 @@ async def add_hw_command(m: Message):
 @dp.message_handler(commands=['id'])
 async def get_chat_id(m: Message):
     await m.reply(m.chat.id)
+
+
+@dp.callback_query_handler(lambda q: q.data.startswith('subject'))
+async def subjects_query(q: CallbackQuery):
+    subject_doc = subjects_collection.find_one({'_id': ObjectId(q.data.split('_')[1])})
+
+    subject_id = subject_doc['_id']
+    # chat_id = subject_doc['chat_id']
+    tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
+    print(tasks_list)
+    # message = 'No tasks' if not tasks_list else str(tasks_list)
+
+    await q.message.edit_text(str(tasks_list))
+    await q.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='Back', callback_data='back'),
+            InlineKeyboardButton(text='Add homework', callback_data='add_' + str(subject_id)),
+            InlineKeyboardButton(text='Update', callback_data='update_' + str(subject_id))
+        ]
+    ]))
+
+
+@dp.callback_query_handler(lambda q: q.data == 'back')
+async def back_button(q: CallbackQuery):
+    chat_id = q.message.chat.id
+    subjects = list(subjects_collection.find({'chat_id': chat_id}))
+
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=utils.create_markup(subjects))
+
+    await q.message.edit_text('Choose:')
+    await q.message.edit_reply_markup(reply_markup)
+
+
+@dp.callback_query_handler(lambda q: q.data.startswith('add'))
+async def add_button(q: CallbackQuery):
+    waiting['chat_id'] = q.message.chat.id
+    waiting['user_id'] = q.from_user['id']
+    waiting['subject_id'] = q.data.split('_')[1]
+
+    await q.message.reply('Send homework')
+
+
+@dp.callback_query_handler(lambda q: q.data == 'update')
+async def update_button(q: CallbackQuery):
+    pass
+
+
+@dp.message_handler()
+async def any_message(m: Message):
+
+    if waiting and m.chat.id == waiting['chat_id'] and m.from_user['id'] == waiting['user_id']:
+        print(waiting['subject_id'])
+        task = {
+            'user_id': waiting['user_id'],
+            'chat_id': waiting['chat_id'],
+            'subject_id': ObjectId(waiting['subject_id']),
+            'task_text': m.text
+        }
+
+        tasks_collection.insert_one(task)
+        waiting.clear()
+
+        await m.reply('Homework added!')
