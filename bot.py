@@ -1,5 +1,5 @@
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ForceReply
 from aiogram.types.inline_keyboard import InlineKeyboardMarkup, InlineKeyboardButton
 from bson.objectid import ObjectId
 
@@ -46,7 +46,7 @@ async def subjects_command(m: Message):
     else:
         # TODO: Add callback button with login url if no subjects
         reply_markup = None
-        text = 'No added subjects.'
+        text = 'No subjects added.'
 
     await m.reply(text=text, reply_markup=reply_markup)
 
@@ -70,15 +70,15 @@ async def get_chat_id(m: Message):
 
 @dp.callback_query_handler(lambda q: q.data.startswith('subject'))
 async def subjects_query(q: CallbackQuery):
-    subject_doc = subjects_collection.find_one({'_id': ObjectId(q.data.split('_')[1])})
-
-    subject_id = subject_doc['_id']
-    # chat_id = subject_doc['chat_id']
+    subject_id = ObjectId(q.data.split('_')[1])
     tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
-    print(tasks_list)
-    # message = 'No tasks' if not tasks_list else str(tasks_list)
 
-    await q.message.edit_text(str(tasks_list))
+    try:
+        message = str(tasks_list[-1]['task_text'])
+    except IndexError:
+        message = 'No tasks'
+
+    await q.message.edit_text(message)
     await q.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text='Back', callback_data='back'),
@@ -105,19 +105,34 @@ async def add_button(q: CallbackQuery):
     waiting['user_id'] = q.from_user['id']
     waiting['subject_id'] = q.data.split('_')[1]
 
-    await q.message.reply('Send homework')
+    await q.message.reply('Send homework', reply_markup=ForceReply())
 
 
-@dp.callback_query_handler(lambda q: q.data == 'update')
+@dp.callback_query_handler(lambda q: q.data.startswith('update'))
 async def update_button(q: CallbackQuery):
-    pass
+    subject_id = ObjectId(q.data.split('_')[1])
+    tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
+
+    try:
+        message = str(tasks_list[-1]['task_text'])
+    except IndexError:
+        message = 'No tasks'
+
+    await q.message.edit_text(message)
+    await q.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='Back', callback_data='back'),
+            InlineKeyboardButton(text='Add', callback_data='add_' + str(subject_id)),
+            InlineKeyboardButton(text='Update', callback_data='update_' + str(subject_id))
+        ]
+    ]))
 
 
 @dp.message_handler()
 async def any_message(m: Message):
 
     if waiting and m.chat.id == waiting['chat_id'] and m.from_user['id'] == waiting['user_id']:
-        print(waiting['subject_id'])
+
         task = {
             'user_id': waiting['user_id'],
             'chat_id': waiting['chat_id'],
