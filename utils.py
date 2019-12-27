@@ -1,6 +1,10 @@
 from db import chats_collection
-from aiogram.types.inline_keyboard import InlineKeyboardButton
+from aiogram.types.inline_keyboard import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types.message import Message
 from math import ceil
+from typing import Tuple
+
+from db import subjects_collection
 
 
 def is_private(chat_id):
@@ -53,3 +57,18 @@ def create_markup(subjects):
 
     if 8 < l:
         return _get_rows(3)
+
+
+def get_subjects_message(m: Message) -> Tuple[str, InlineKeyboardMarkup]:
+    chat_id = m.chat.id
+    subjects = list(subjects_collection.find({'chat_id': chat_id}))
+
+    if subjects:
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=create_markup(subjects))
+        text = 'Choose subject:'
+    else:
+        # TODO: Add callback button with login url if no subjects
+        reply_markup = None
+        text = 'No subjects were added.'
+
+    return text, reply_markup
