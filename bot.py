@@ -1,11 +1,16 @@
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message, CallbackQuery
+from aiogram.types.message import ContentType
+from aiogram.types import input_media, ParseMode
 from aiogram.types.inline_keyboard import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
+from aiogram.utils.markdown import italic
+from aiogram.utils.exceptions import MessageNotModified
 from bson.objectid import ObjectId
+from pprint import pprint
 
-from config import TOKEN, DEBUG
+from config import TOKEN, DEBUG, FileTypes
 from db import users_collection, chats_collection, subjects_collection, tasks_collection
 import utils
 from states import BotState
@@ -16,9 +21,19 @@ dp = Dispatcher(bot, storage=storage)
 
 
 if DEBUG:
-    @dp.message_handler(commands=['id'])
+    @dp.message_handler(commands=['chat_id'])
     async def get_chat_id(m: Message):
         await m.reply(m.chat.id)
+
+
+    @dp.message_handler(lambda m: m.caption == '/file_id', content_types=ContentType.PHOTO)
+    async def get_chat_id(m: Message):
+        await m.reply(m.photo[1].file_id)
+
+
+    @dp.message_handler(commands=['file'])
+    async def get_file_by_id(m: Message):
+        await m.reply_photo(photo=m.get_args())
 
 
 @dp.message_handler(commands=['new_chat'])
@@ -48,32 +63,79 @@ async def subjects_command(m: Message):
     await m.reply(text=text, reply_markup=reply_markup)
 
 
+@dp.message_handler(state=BotState.waiting, commands=['done'])
+async def done_command(m: Message, state: FSMContext):
+    data = await state.get_data()
+
+    try:
+        task = {
+            'user_id': data['user_id'],
+            'chat_id': data['chat_id'],
+            'subject_id': ObjectId(data['subject_id']),
+            'task_text': data['task_text'],
+            'file_type': FileTypes.PHOTO,
+            'file_id': data['file_id']
+        }
+
+        tasks_collection.insert_one(task)
+
+        await m.reply('Homework added!', reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text='Subjects list', callback_data='subjects_list')
+            ]
+        ]))
+
+        data.clear()
+    except KeyError:
+        return
+    finally:
+        await state.finish()
+
+
 @dp.callback_query_handler(lambda q: q.data == 'subjects_list')
 async def subjects_list_button(q: CallbackQuery):
     text, reply_markup = utils.get_subjects_message(q.message)
 
-    await q.message.edit_text(text)
-    await q.message.edit_reply_markup(reply_markup)
+    await q.message.edit_text(text, reply_markup=reply_markup)
 
 
 @dp.callback_query_handler(lambda q: q.data.startswith('subject'))
 async def subject_query(q: CallbackQuery):
     subject_id = ObjectId(q.data.split('_')[1])
-    tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
 
-    try:
-        message = str(tasks_list[-1]['task_text'])
-    except IndexError:
-        message = 'No tasks'
-
-    await q.message.edit_text(message)
-    await q.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text='Back', callback_data='back'),
             InlineKeyboardButton(text='Add', callback_data='add_' + str(subject_id)),
             InlineKeyboardButton(text='Update', callback_data='update_' + str(subject_id))
         ]
-    ]))
+    ])
+
+    tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
+    last_task = tasks_list[-1] if tasks_list else None
+
+    if not tasks_list:
+        message = 'No tasks'
+        await q.message.edit_text(message, reply_markup=reply_markup)
+        return
+    elif not last_task['task_text']:
+        message = ''
+    else:
+        message = 'Last task is:\n' + last_task['task_text']
+
+    file_type = last_task['file_type']
+
+    if file_type == FileTypes.NO_FILES:
+        await q.message.edit_text(message, reply_markup=reply_markup)
+    elif file_type == FileTypes.PHOTO:
+        message = italic('Task with photo(s)\n\n') + message
+
+        media_group = [
+            input_media.InputMediaPhoto(media=photo_id) for photo_id in last_task['file_id']
+        ]
+
+        await q.message.edit_text(message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
+        await q.message.reply_media_group(media=media_group)
 
 
 @dp.callback_query_handler(lambda q: q.data == 'back')
@@ -83,12 +145,17 @@ async def back_button(q: CallbackQuery):
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=utils.create_markup(subjects))
 
-    await q.message.edit_text('Choose:')
-    await q.message.edit_reply_markup(reply_markup)
+    await q.message.edit_text('Choose:', reply_markup=reply_markup)
 
 
 @dp.callback_query_handler(lambda q: q.data.startswith('add'))
 async def add_button(q: CallbackQuery, state: FSMContext):
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='Cancel', callback_data='cancel_' + q.data.split('_')[1])
+        ]
+    ])
+
     await BotState.waiting.set()
 
     data = {
@@ -99,32 +166,15 @@ async def add_button(q: CallbackQuery, state: FSMContext):
 
     await state.update_data(data)
 
-    await q.message.edit_text('Send homework')
-    await q.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text='Cancel', callback_data='cancel_' + q.data.split('_')[1])
-        ]
-    ]))
+    await q.message.edit_text('Send homework', reply_markup=reply_markup)
 
 
 @dp.callback_query_handler(lambda q: q.data.startswith('update'))
 async def update_button(q: CallbackQuery):
-    subject_id = ObjectId(q.data.split('_')[1])
-    tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
-
     try:
-        message = str(tasks_list[-1]['task_text'])
-    except IndexError:
-        message = 'No tasks'
-
-    await q.message.edit_text(message)
-    await q.message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text='Back', callback_data='back'),
-            InlineKeyboardButton(text='Add', callback_data='add_' + str(subject_id)),
-            InlineKeyboardButton(text='Update', callback_data='update_' + str(subject_id))
-        ]
-    ]))
+        await subject_query(q)
+    except MessageNotModified:
+        return
 
 
 @dp.callback_query_handler(lambda q: q.data.startswith('cancel'))
@@ -133,17 +183,39 @@ async def cancel_button(q: CallbackQuery, state: FSMContext):
     await subject_query(q)
 
 
+@dp.message_handler(state=BotState.waiting, content_types=ContentType.PHOTO)
+async def photo_handler(m: Message, state: FSMContext):
+    current_file_id = [p.file_id for p in m.photo][1]
+    data = await state.get_data()
+
+    if 'file_id' not in data:
+        data['file_id'] = []
+
+    if 'task_text' not in data:
+        data['task_text'] = m.caption
+
+    data['file_id'].append(current_file_id)
+
+    await state.update_data(data)
+
+
+@dp.message_handler(state=BotState.waiting, content_types=ContentType.DOCUMENT)
+async def photo_handler(m: Message):
+    await m.reply('Send attachments as photos!')
+
+
 @dp.message_handler(state=BotState.waiting)
 async def any_message(m: Message, state: FSMContext):
     data = await state.get_data()
 
     if data and m.chat.id == data['chat_id'] and m.from_user['id'] == data['user_id']:
-
         task = {
             'user_id': data['user_id'],
             'chat_id': data['chat_id'],
             'subject_id': ObjectId(data['subject_id']),
-            'task_text': m.text
+            'task_text': m.text,
+            'file_type': FileTypes.NO_FILES,
+            'file_id': []
         }
 
         tasks_collection.insert_one(task)
