@@ -11,7 +11,6 @@ TOKEN = os.environ.get('TOKEN')
 class FileTypes:
     PHOTO = 0
     DOCUMENT = 1
-    NO_FILES = -1
 
 
 if DEBUG:

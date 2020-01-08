@@ -8,7 +8,6 @@ from aiogram.dispatcher import FSMContext
 from aiogram.utils.markdown import italic
 from aiogram.utils.exceptions import MessageNotModified
 from bson.objectid import ObjectId
-from pprint import pprint
 
 from config import TOKEN, DEBUG, FileTypes
 from db import users_collection, chats_collection, subjects_collection, tasks_collection
@@ -73,8 +72,7 @@ async def done_command(m: Message, state: FSMContext):
             'chat_id': data['chat_id'],
             'subject_id': ObjectId(data['subject_id']),
             'task_text': data['task_text'],
-            'file_type': FileTypes.PHOTO,
-            'file_id': data['file_id']
+            'files': data['files']
         }
 
         tasks_collection.insert_one(task)
@@ -123,19 +121,28 @@ async def subject_query(q: CallbackQuery):
     else:
         message = 'Last task is:\n' + last_task['task_text']
 
-    file_type = last_task['file_type']
+    files = last_task['files']
+    if files:
+        photos = [file for file in files if file['type'] == FileTypes.PHOTO]
+        docs = [file for file in files if file['type'] == FileTypes.DOCUMENT]
 
-    if file_type == FileTypes.NO_FILES:
+        message = italic('Task with file(s)\n\n') + message
+    else:
         await q.message.edit_text(message, reply_markup=reply_markup)
-    elif file_type == FileTypes.PHOTO:
-        message = italic('Task with photo(s)\n\n') + message
+        return
 
+    await q.message.edit_text(message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
+
+    if photos:
         media_group = [
-            input_media.InputMediaPhoto(media=photo_id) for photo_id in last_task['file_id']
+            input_media.InputMediaPhoto(media=photo['id']) for photo in photos
         ]
 
-        await q.message.edit_text(message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
         await q.message.reply_media_group(media=media_group)
+
+    if docs:
+        for doc in docs:
+            await q.message.reply_document(doc['id'])
 
 
 @dp.callback_query_handler(lambda q: q.data == 'back')
@@ -183,25 +190,29 @@ async def cancel_button(q: CallbackQuery, state: FSMContext):
     await subject_query(q)
 
 
-@dp.message_handler(state=BotState.waiting, content_types=ContentType.PHOTO)
+@dp.message_handler(state=BotState.waiting, content_types=[ContentType.PHOTO, ContentType.DOCUMENT])
 async def photo_handler(m: Message, state: FSMContext):
-    current_file_id = [p.file_id for p in m.photo][1]
+    if m.photo:
+        current_file_id = [p.file_id for p in m.photo][1]
+        file_type = FileTypes.PHOTO
+    elif m.document:
+        current_file_id = m.document.file_id
+        file_type = FileTypes.DOCUMENT
+
     data = await state.get_data()
 
-    if 'file_id' not in data:
-        data['file_id'] = []
+    if 'files' not in data:
+        data['files'] = []
 
     if 'task_text' not in data:
         data['task_text'] = m.caption
 
-    data['file_id'].append(current_file_id)
+    data['files'].append({
+        'id': current_file_id,
+        'type': file_type
+    })
 
     await state.update_data(data)
-
-
-@dp.message_handler(state=BotState.waiting, content_types=ContentType.DOCUMENT)
-async def photo_handler(m: Message):
-    await m.reply('Send attachments as photos!')
 
 
 @dp.message_handler(state=BotState.waiting)
@@ -214,8 +225,7 @@ async def any_message(m: Message, state: FSMContext):
             'chat_id': data['chat_id'],
             'subject_id': ObjectId(data['subject_id']),
             'task_text': m.text,
-            'file_type': FileTypes.NO_FILES,
-            'file_id': []
+            'files': []
         }
 
         tasks_collection.insert_one(task)
