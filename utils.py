@@ -8,7 +8,7 @@ from db import subjects_collection
 
 
 def is_private(chat_id):
-    return chat_id > 0  # check docs about chat_id == 0
+    return chat_id > 0
 
 
 def chat_exists(chat_id):

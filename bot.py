@@ -12,7 +12,7 @@ from bson.objectid import ObjectId
 from config import TOKEN, DEBUG, FileTypes
 from db import users_collection, chats_collection, subjects_collection, tasks_collection
 import utils
-from states import BotState
+from states import States
 
 bot = Bot(TOKEN)
 storage = MemoryStorage()
@@ -55,14 +55,16 @@ async def new_chat_command(m: Message):
         await m.reply('Chat has been already created!')
 
 
-@dp.message_handler(commands=['subjects'])
+@dp.message_handler(commands=['subjects'], state='*')
 async def subjects_command(m: Message):
+    await States.subject_list.set()
+
     text, reply_markup = utils.get_subjects_message(m)
 
     await m.reply(text=text, reply_markup=reply_markup)
 
 
-@dp.message_handler(state=BotState.waiting, commands=['done'])
+@dp.message_handler(state=States.waiting, commands=['done'])
 async def done_command(m: Message, state: FSMContext):
     data = await state.get_data()
 
@@ -98,19 +100,29 @@ async def subjects_list_button(q: CallbackQuery):
 
 
 @dp.callback_query_handler(lambda q: q.data.startswith('subject'))
-async def subject_query(q: CallbackQuery):
-    subject_id = ObjectId(q.data.split('_')[1])
+async def subject_query(q: CallbackQuery, state: FSMContext):
+    current_state = await state.get_state()
+    # current_data = await state.get_data()
+    expected_subject_id = ObjectId(q.data.split('_')[1])
+    #
+    # if current_data and current_data['subject_id'] != expected_subject_id:
+    #     await q.message.edit_text('This message is out of date.\nPlease use the last one or open a new subjects '
+    #                               'interface by sending /subjects command.')
+    #     return
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text='Back', callback_data='back'),
-            InlineKeyboardButton(text='Add', callback_data='add_' + str(subject_id)),
-            InlineKeyboardButton(text='Update', callback_data='update_' + str(subject_id))
+            InlineKeyboardButton(text='Add', callback_data='add_' + str(expected_subject_id)),
+            InlineKeyboardButton(text='Update', callback_data='update_' + str(expected_subject_id))
         ]
     ])
 
-    tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
+    tasks_list = list(tasks_collection.find({'subject_id': expected_subject_id}))
     last_task = tasks_list[-1] if tasks_list else None
+
+    if current_state != States.subject_task.state:
+        await States.subject_task.set()
 
     if not tasks_list:
         message = 'No tasks'
@@ -128,25 +140,41 @@ async def subject_query(q: CallbackQuery):
 
         message = italic('Task with file(s)\n\n') + message
     else:
+        data = {
+            'subject_id': expected_subject_id
+        }
+
+        await state.set_data(data)
         await q.message.edit_text(message, reply_markup=reply_markup)
         return
 
     await q.message.edit_text(message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
 
+    data = {
+        'subject_id': expected_subject_id,
+        'photos': [],
+        'docs': []
+    }
+
     if photos:
         media_group = [
-            input_media.InputMediaPhoto(media=photo['id']) for photo in photos
+            input_media.InputMediaPhoto(media=photo['id'], caption=photo['caption']) for photo in photos
         ]
 
-        await q.message.reply_media_group(media=media_group)
+        data['photos'] = await q.message.reply_media_group(media=media_group)
 
     if docs:
         for doc in docs:
-            await q.message.reply_document(doc['id'])
+            sent_doc = await q.message.reply_document(doc['id'], caption=doc['caption'])
+            data['docs'].append(sent_doc)
+
+    await state.update_data(data)
 
 
 @dp.callback_query_handler(lambda q: q.data == 'back')
-async def back_button(q: CallbackQuery):
+async def back_button(q: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    print(data)
     chat_id = q.message.chat.id
     subjects = list(subjects_collection.find({'chat_id': chat_id}))
 
@@ -154,16 +182,32 @@ async def back_button(q: CallbackQuery):
 
     await q.message.edit_text('Choose:', reply_markup=reply_markup)
 
+    for key in data.keys():
+        if key == 'subject_id':
+            continue
+        for item in data[key]:
+            await item.delete()
+
+    await state.finish()
+
 
 @dp.callback_query_handler(lambda q: q.data.startswith('add'))
 async def add_button(q: CallbackQuery, state: FSMContext):
+    # current_data = await state.get_data()
+    # current_subject_id = current_data['subject_id'] if current_data else None
+    #
+    # if current_subject_id != q.data.split('_')[1]:
+    #     await q.message.edit_text('This message is out of date.\nPlease use the last one or open a new subjects '
+    #                               'interface by sending /subjects command.')
+    #     return
+
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text='Cancel', callback_data='cancel_' + q.data.split('_')[1])
         ]
     ])
 
-    await BotState.waiting.set()
+    await States.waiting.set()
 
     data = {
         'chat_id': q.message.chat.id,
@@ -177,9 +221,9 @@ async def add_button(q: CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(lambda q: q.data.startswith('update'))
-async def update_button(q: CallbackQuery):
+async def update_button(q: CallbackQuery, state: FSMContext):
     try:
-        await subject_query(q)
+        await subject_query(q, state)
     except MessageNotModified:
         return
 
@@ -187,16 +231,18 @@ async def update_button(q: CallbackQuery):
 @dp.callback_query_handler(lambda q: q.data.startswith('cancel'))
 async def cancel_button(q: CallbackQuery, state: FSMContext):
     await state.finish()
-    await subject_query(q)
+    await subject_query(q, state)
 
 
-@dp.message_handler(state=BotState.waiting, content_types=[ContentType.PHOTO, ContentType.DOCUMENT])
+@dp.message_handler(state=States.waiting, content_types=[ContentType.PHOTO, ContentType.DOCUMENT])
 async def photo_handler(m: Message, state: FSMContext):
     if m.photo:
         current_file_id = [p.file_id for p in m.photo][1]
+        caption = m.caption
         file_type = FileTypes.PHOTO
     elif m.document:
         current_file_id = m.document.file_id
+        caption = m.caption
         file_type = FileTypes.DOCUMENT
 
     data = await state.get_data()
@@ -207,15 +253,17 @@ async def photo_handler(m: Message, state: FSMContext):
     if 'task_text' not in data:
         data['task_text'] = m.caption
 
+    # noinspection PyUnboundLocalVariable
     data['files'].append({
         'id': current_file_id,
-        'type': file_type
+        'type': file_type,
+        'caption': caption
     })
 
     await state.update_data(data)
 
 
-@dp.message_handler(state=BotState.waiting)
+@dp.message_handler(state=States.waiting)
 async def any_message(m: Message, state: FSMContext):
     data = await state.get_data()
 
