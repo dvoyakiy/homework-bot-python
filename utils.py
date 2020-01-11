@@ -16,10 +16,10 @@ def chat_exists(chat_id):
 
 
 def create_markup(subjects):
-    l = len(subjects)
+    length = len(subjects)
 
     def _get_rows(elements_in_row):
-        rows = ceil(l / elements_in_row)
+        rows = ceil(length / elements_in_row)
         added = 0
         res = []
 
@@ -43,19 +43,19 @@ def create_markup(subjects):
 
         return res
 
-    if l == 0:
+    if length == 0:
         return []
 
-    if 0 < l < 6:
+    if 0 < length < 6:
         return [[InlineKeyboardButton(
             text=s['title'],
             callback_data='subject_' + str(s['_id'])
         )] for s in subjects]
 
-    if 6 <= l <= 8:
+    if 6 <= length <= 8:
         return _get_rows(2)
 
-    if 8 < l:
+    if 8 < length:
         return _get_rows(3)
 
 
