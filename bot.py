@@ -102,23 +102,17 @@ async def subjects_list_button(q: CallbackQuery):
 @dp.callback_query_handler(lambda q: q.data.startswith('subject'))
 async def subject_query(q: CallbackQuery, state: FSMContext):
     current_state = await state.get_state()
-    # current_data = await state.get_data()
-    expected_subject_id = ObjectId(q.data.split('_')[1])
-    #
-    # if current_data and current_data['subject_id'] != expected_subject_id:
-    #     await q.message.edit_text('This message is out of date.\nPlease use the last one or open a new subjects '
-    #                               'interface by sending /subjects command.')
-    #     return
+    subject_id = ObjectId(q.data.split('_')[1])
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text='Back', callback_data='back'),
-            InlineKeyboardButton(text='Add', callback_data='add_' + str(expected_subject_id)),
-            InlineKeyboardButton(text='Update', callback_data='update_' + str(expected_subject_id))
+            InlineKeyboardButton(text='Add', callback_data='add_' + str(subject_id)),
+            InlineKeyboardButton(text='Update', callback_data='update_' + str(subject_id))
         ]
     ])
 
-    tasks_list = list(tasks_collection.find({'subject_id': expected_subject_id}))
+    tasks_list = list(tasks_collection.find({'subject_id': subject_id}))
     last_task = tasks_list[-1] if tasks_list else None
 
     if current_state != States.subject_task.state:
@@ -141,7 +135,7 @@ async def subject_query(q: CallbackQuery, state: FSMContext):
         message = italic('Task with file(s)\n\n') + message
     else:
         data = {
-            'subject_id': expected_subject_id
+            'subject_id': subject_id
         }
 
         await state.set_data(data)
@@ -151,7 +145,7 @@ async def subject_query(q: CallbackQuery, state: FSMContext):
     await q.message.edit_text(message, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
 
     data = {
-        'subject_id': expected_subject_id,
+        'subject_id': subject_id,
         'photos': [],
         'docs': []
     }
@@ -174,7 +168,7 @@ async def subject_query(q: CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(lambda q: q.data == 'back')
 async def back_button(q: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    print(data)
+
     chat_id = q.message.chat.id
     subjects = list(subjects_collection.find({'chat_id': chat_id}))
 
@@ -193,13 +187,13 @@ async def back_button(q: CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(lambda q: q.data.startswith('add'))
 async def add_button(q: CallbackQuery, state: FSMContext):
-    # current_data = await state.get_data()
-    # current_subject_id = current_data['subject_id'] if current_data else None
-    #
-    # if current_subject_id != q.data.split('_')[1]:
-    #     await q.message.edit_text('This message is out of date.\nPlease use the last one or open a new subjects '
-    #                               'interface by sending /subjects command.')
-    #     return
+    data = await state.get_data()
+
+    for key in data.keys():
+        if key == 'subject_id':
+            continue
+        for item in data[key]:
+            await item.delete()
 
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[
         [
