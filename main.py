@@ -11,7 +11,7 @@ def main():
     else:
         log_level = logging.INFO
 
-    # logging.basicConfig(level=log_level)
+    logging.basicConfig(level=log_level)
     executor.start_polling(dispatcher=dp, skip_updates=True)
 
 
