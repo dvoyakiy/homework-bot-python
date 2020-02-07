@@ -1,0 +1,4 @@
+/bot/.env
+/api/node_modules/
+/api/.env
+/api/yarn-error.log
