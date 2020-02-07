@@ -1,8 +1,8 @@
 from aiogram import executor
 import logging
 
-from bot import dp
-import config
+from bot.bot import dp
+from bot import config
 
 
 def main():

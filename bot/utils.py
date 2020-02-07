@@ -1,10 +1,10 @@
-from db import chats_collection
+from bot.db import chats_collection
 from aiogram.types.inline_keyboard import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types.message import Message
 from math import ceil
 from typing import Tuple
 
-from db import subjects_collection
+from bot.db import subjects_collection
 
 
 def is_private(chat_id):

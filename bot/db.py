@@ -1,7 +1,6 @@
 from pymongo import MongoClient
 
-import config
-
+from bot import config
 
 client = MongoClient(config.CONNECTION_STRING)
 db = client[config.DB_NAME]
