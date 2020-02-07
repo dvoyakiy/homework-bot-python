@@ -9,7 +9,8 @@ from aiogram.utils.markdown import italic
 from aiogram.utils.exceptions import MessageNotModified
 from bson.objectid import ObjectId
 
-from config import TOKEN, DEBUG, FileTypes
+from config import TOKEN, DEBUG
+from utils import FileTypes
 from db import users_collection, chats_collection, subjects_collection, tasks_collection
 import utils
 from states import States

@@ -72,3 +72,9 @@ def get_subjects_message(m: Message) -> Tuple[str, InlineKeyboardMarkup]:
         text = 'No subjects were added.'
 
     return text, reply_markup
+
+
+# Message attachments types
+class FileTypes:
+    PHOTO = 0
+    DOCUMENT = 1
