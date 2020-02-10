@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const crypto = require('crypto');
 
-const utils = require('../utils');
+const {checkSignature, createSecret} = require('../utils');
 
 
 router.post('/', (req, res) => {
-    const secretKey = crypto.createHash('sha256').update(process.env.TOKEN).digest();
-    res.send(utils.checkSignature(secretKey, req.body));
+    const secretKey = createSecret(process.env.TOKEN);
+    const valid = checkSignature(secretKey, req.body);
+
+    const status = valid ? 200 : 401;
+
+    res.status(status).send(valid);
 });
 
 module.exports = router;

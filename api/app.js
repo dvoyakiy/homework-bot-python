@@ -1,12 +1,10 @@
 require('dotenv').config();
 
-const express = require('express');
-const app = express();
+const app = require('express')();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const PORT = process.env.PORT || 3000;
 
-const auth = require('./routes/auth');
 
 //todo use options in production
 // const corsOptions = {
@@ -19,6 +17,9 @@ app.use(bodyParser.urlencoded({
     extended: true
 }));
 app.use(bodyParser.json());
+
+
+const auth = require('./routes/auth');
 
 app.use('/auth', auth);
 
