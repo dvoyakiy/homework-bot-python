@@ -1,9 +1,8 @@
-require('dotenv').config();
+const { PORT } = require('./config');
 
 const app = require('express')();
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const PORT = process.env.PORT || 3000;
 
 
 //todo use options in production
