@@ -1,17 +1,18 @@
-require('dotenv').config();
+const { BOT_TOKEN } = require('../config');
 
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 
 const {checkSignature, createSecret} = require('../utils');
+const {registerUser} = require('../service/service');
 
 
 router.post('/', (req, res) => {
     let status = 401, jwtToken;
     const data = {};
 
-    const secretKey = createSecret(process.env.TOKEN);
+    const secretKey = createSecret(BOT_TOKEN);
     const valid = checkSignature(secretKey, req.body);
 
     if (valid) {
@@ -22,6 +23,8 @@ router.post('/', (req, res) => {
         }, process.env.SECRET);
 
         data.token = jwtToken;
+
+        registerUser(req.body);
     }
 
     res.status(status).send(data);
