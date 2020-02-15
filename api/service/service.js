@@ -13,29 +13,27 @@ mongoose
     });
 
 async function registerUser({id, first_name, last_name, username, photo_url}) {
-    if (!(await _exists(id))) {
-        const user = new User({
-            username: username,
-            user_id: id,
-            first_name: first_name,
-            last_name: last_name,
-            user_pic: photo_url
-        });
+    const user = new User({
+        username: username,
+        user_id: id,
+        first_name: first_name,
+        last_name: last_name,
+        user_pic: photo_url
+    });
 
-        try{
-            await user.save();
-        } catch (e) {
-            console.error(e);
-        }
+    try{
+        await user.save();
+    } catch (e) {
+        console.error(e);
     }
 }
 
-async function _exists(user_id) {
+async function userExists(user_id) {
     const user = await User.findOne({user_id: user_id});
-    console.log(user);
     return Boolean(user);
 }
 
 module.exports = {
-    registerUser
+    registerUser,
+    userExists
 };

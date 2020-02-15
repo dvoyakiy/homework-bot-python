@@ -5,10 +5,10 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 
 const {checkSignature, createSecret} = require('../utils');
-const {registerUser} = require('../service/service');
+const {userExists, registerUser} = require('../service/service');
 
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     let status = 401, jwtToken;
     const data = {};
 
@@ -24,7 +24,7 @@ router.post('/', (req, res) => {
 
         data.token = jwtToken;
 
-        registerUser(req.body);
+        if (!(await userExists(req.body.id))) await registerUser(req.body);
     }
 
     res.status(status).send(data);
