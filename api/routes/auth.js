@@ -1,4 +1,4 @@
-const { BOT_TOKEN } = require('../config');
+const { BOT_TOKEN, ACCESS_TOKEN_SECRET } = require('../config');
 
 const express = require('express');
 const router = express.Router();
@@ -20,9 +20,9 @@ router.post('/', async (req, res) => {
 
         jwtToken = jwt.sign({
             id: req.body.id
-        }, process.env.SECRET);
+        }, ACCESS_TOKEN_SECRET);
 
-        data.token = jwtToken;
+        data.accessToken = jwtToken;
 
         if (!(await userExists(req.body.id))) await registerUser(req.body);
     }
