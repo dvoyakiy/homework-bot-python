@@ -19,8 +19,10 @@ app.use(bodyParser.json());
 
 
 const auth = require('./routes/auth');
+const chats = require('./routes/chats');
 
 app.use('/auth', auth);
+app.use('/chats', chats);
 
 
 app.listen(PORT, () => {
