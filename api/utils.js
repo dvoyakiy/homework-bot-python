@@ -1,6 +1,6 @@
 const {createHmac, createHash} = require('crypto');
 
-function checkSignature (secret, { hash, ...data }) {
+async function checkSignature (secret, { hash, ...data }) {
     const checkString = Object.keys(data)
         .sort()
         .map(k => (`${k}=${data[k]}`))
@@ -13,7 +13,7 @@ function checkSignature (secret, { hash, ...data }) {
     return hmac === hash;
 }
 
-function createSecret(string){
+async function createSecret(string){
     return createHash('sha256').update(string).digest();
 }
 

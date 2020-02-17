@@ -12,8 +12,8 @@ router.post('/', async (req, res) => {
     let status = 401, jwtToken;
     const data = {};
 
-    const secretKey = createSecret(BOT_TOKEN);
-    const valid = checkSignature(secretKey, req.body);
+    const secretKey = await createSecret(BOT_TOKEN);
+    const valid = await checkSignature(secretKey, req.body);
 
     if (valid) {
         status = 200;
