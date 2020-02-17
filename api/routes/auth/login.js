@@ -1,11 +1,11 @@
-const { BOT_TOKEN, ACCESS_TOKEN_SECRET } = require('../config');
+const { BOT_TOKEN, ACCESS_TOKEN_SECRET } = require('../../config');
 
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 
-const {checkSignature, createSecret} = require('../utils');
-const {userExists, registerUser} = require('../service/service');
+const {checkSignature, createSecret} = require('../../utils');
+const {userExists, registerUser} = require('../../service/service');
 
 
 router.post('/', async (req, res) => {

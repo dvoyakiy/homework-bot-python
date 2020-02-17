@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const {authRequired} = require('../middleware/authRequired');
+const {authRequired} = require('../../middleware/authRequired');
 
 
 router.route('/')

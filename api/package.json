@@ -2,10 +2,12 @@
     "name": "homework-bot-api",
     "version": "0.1.0",
     "description": "",
-    "main": "app.js",
+    "main": "apps/apiServer.js",
     "scripts": {
-        "dev": "nodemon app.js",
-        "start": "node app.js",
+        "dev": "concurrently \"npm run devApi\" \"npm run devAuth\"",
+        "devApi": "nodemon apps/apiServer.js",
+        "devAuth": "nodemon apps/authServer.js",
+        "start": "node apps/apiServer.js apps/authServer.js",
         "test": "jest"
     },
     "repository": {
@@ -27,6 +29,7 @@
         "mongoose": "^5.8.11"
     },
     "devDependencies": {
+        "concurrently": "^5.1.0",
         "jest": "^25.1.0",
         "nodemon": "^2.0.2"
     }
