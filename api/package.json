@@ -29,6 +29,7 @@
         "mongoose": "^5.8.11"
     },
     "devDependencies": {
+        "axios": "^0.19.2",
         "concurrently": "^5.1.0",
         "jest": "^25.1.0",
         "nodemon": "^2.0.2"

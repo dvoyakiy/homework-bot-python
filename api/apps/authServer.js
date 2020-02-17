@@ -14,7 +14,7 @@ authServer.use(bodyParser.json());
 
 const login = require('../routes/auth/login');
 
-authServer.use('/login', login);
+authServer.use('/api/login', login);
 
 
 authServer.listen(AUTH_PORT, () => {

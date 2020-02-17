@@ -14,7 +14,7 @@ apiServer.use(bodyParser.json());
 
 const chats = require('../routes/api/chats');
 
-apiServer.use('/chats', chats);
+apiServer.use('/api/chats', chats);
 
 
 apiServer.listen(API_PORT, () => {
