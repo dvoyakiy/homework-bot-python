@@ -1,15 +1,14 @@
-const { BOT_TOKEN, ACCESS_TOKEN_SECRET } = require('../../config');
-
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 
-const {checkSignature, createSecret} = require('../../utils');
+const { BOT_TOKEN } = require('../../config');
+
+const {checkSignature, createSecret, issueTokenPair} = require('../../utils');
 const {userExists, registerUser} = require('../../service/service');
 
 
 router.post('/', async (req, res) => {
-    let status = 401, jwtToken;
+    let status = 401;
     const data = {};
 
     const secretKey = await createSecret(BOT_TOKEN);
@@ -17,12 +16,12 @@ router.post('/', async (req, res) => {
 
     if (valid) {
         status = 200;
-
-        jwtToken = jwt.sign({
+        const { accessToken, refreshToken } = await issueTokenPair({
             id: req.body.id
-        }, ACCESS_TOKEN_SECRET);
+        });
 
-        data.accessToken = jwtToken;
+        data.accessToken = accessToken;
+        data.refreshToken = refreshToken;
 
         if (!(await userExists(req.body.id))) await registerUser(req.body);
     }

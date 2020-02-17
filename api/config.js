@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const DEBUG = true;
+
 const cors = require('cors');
 
 const corsOptions = {
@@ -9,7 +11,7 @@ const corsOptions = {
 //todo use options in production
 const corsMiddleware = cors(corsOptions);
 
-const DEBUG = true;
+const EXPIRES_IN = DEBUG ? '20s' : '15m';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const API_PORT = 3000;
@@ -34,6 +36,7 @@ module.exports = {
     REFRESH_TOKEN_SECRET,
     CONNECTION_STRING,
     chatTypes,
-    corsMiddleware
+    corsMiddleware,
+    EXPIRES_IN
 };
 
