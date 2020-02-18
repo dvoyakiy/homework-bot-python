@@ -3,6 +3,7 @@ const { CONNECTION_STRING } = require('../config');
 const mongoose = require('mongoose');
 
 const User = require('./models/User');
+const { issueTokenPair } = require('../utils');
 
 mongoose.set('useNewUrlParser', true);
 mongoose.set('useUnifiedTopology', true);
@@ -18,7 +19,8 @@ async function registerUser({id, first_name, last_name, username, photo_url}) {
         user_id: id,
         first_name: first_name,
         last_name: last_name,
-        user_pic: photo_url
+        user_pic: photo_url,
+        tokens: [await issueTokenPair({id})]
     });
 
     try{
@@ -28,12 +30,17 @@ async function registerUser({id, first_name, last_name, username, photo_url}) {
     }
 }
 
-async function userExists(user_id) {
-    const user = await User.findOne({user_id: user_id});
+async function userExists(userId) {
+    const user = await User.findOne({user_id: userId});
     return Boolean(user);
+}
+
+async function addToken(userId, token) {
+
 }
 
 module.exports = {
     registerUser,
-    userExists
+    userExists,
+    addToken
 };
