@@ -10,7 +10,7 @@ module.exports.authRequired = function(req, res, next) {
     if(!accessToken) return res.sendStatus(401);
 
     jwt.verify(accessToken, ACCESS_TOKEN_SECRET, (err, user_data) => {
-        if(err) return res.sendStatus(403);
+        if(err) return res.sendStatus(401);
 
         req.user = user_data;
         next();
