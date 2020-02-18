@@ -1,15 +1,7 @@
 const { AUTH_PORT } = require('../config');
+const { createServer } = require('../utils');
 
-const authServer = require('express')();
-const bodyParser = require('body-parser');
-const cors = require('cors');
-
-
-authServer.use(cors());
-authServer.use(bodyParser.urlencoded({
-    extended: true
-}));
-authServer.use(bodyParser.json());
+const authServer = createServer();
 
 
 const login = require('../routes/auth/login');

@@ -1,6 +1,9 @@
 const {createHmac, createHash} = require('crypto');
 const jwt = require('jsonwebtoken');
 const uuidv4 = require('uuid/v4');
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const { ACCESS_TOKEN_SECRET, EXPIRES_IN } = require('./config');
 
@@ -34,8 +37,20 @@ async function issueTokenPair(payload) {
     }
 }
 
+function createServer(){
+    const app = express();
+    app.use(cors());
+    app.use(bodyParser.urlencoded({
+        extended: true
+    }));
+    app.use(bodyParser.json());
+
+    return app;
+}
+
 module.exports = {
     checkSignature,
     createSecret,
-    issueTokenPair
+    issueTokenPair,
+    createServer
 };

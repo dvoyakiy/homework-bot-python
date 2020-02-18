@@ -1,15 +1,7 @@
 const { API_PORT } = require('../config');
+const { createServer } = require('../utils');
 
-const apiServer = require('express')();
-const bodyParser = require('body-parser');
-const cors = require('cors');
-
-
-apiServer.use(cors());
-apiServer.use(bodyParser.urlencoded({
-    extended: true
-}));
-apiServer.use(bodyParser.json());
+const apiServer = createServer();
 
 
 const chats = require('../routes/api/chats');
