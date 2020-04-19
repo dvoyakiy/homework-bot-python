@@ -1,4 +1,7 @@
 # Homework Telegram Bot
+Trello:
+https://trello.com/b/oUpHDp5G/homework-bot-python
+
 Development cycle groups (for branches naming)
 - `feature/feature-name` - for new features and functionalities
 - `bug/bug-name` - for bug being fixed
